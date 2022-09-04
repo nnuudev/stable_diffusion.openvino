@@ -8,11 +8,19 @@ from diffusers import LMSDiscreteScheduler, PNDMScheduler
 # utils
 import cv2
 import numpy as np
+# new
+from PIL import Image, PngImagePlugin
+import glob
+import random
 
+invalid_filename_chars = '<>:"/\\|?*\n'
+def sanitize_filename_part(text):
+    return text.replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]
 
 def main(args):
-    if args.seed is not None:
-        np.random.seed(args.seed)
+    if args.seed is None:
+        args.seed = random.randrange(4294967294)
+    np.random.seed(args.seed)
     if args.init_image is None:
         scheduler = LMSDiscreteScheduler(
             beta_start=args.beta_start,
@@ -42,7 +50,19 @@ def main(args):
         guidance_scale = args.guidance_scale,
         eta = args.eta
     )
-    cv2.imwrite(args.output, image)
+    if args.output:
+        filename = args.output
+    else:
+        current = 0
+        while glob.glob(f"{current:05d}-*.png"):
+            current += 1
+        filename = f"{current:05d}-{args.seed}-{sanitize_filename_part(args.prompt)[:128]}.png"
+    #cv2.imwrite(filename, image)
+    info = f"{args.prompt}\nSteps: {args.num_inference_steps}, CFG scale: {args.guidance_scale}, Seed: {args.seed}, OpenVINO"
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("parameters", info)
+    image = Image.fromarray(image)
+    image.save(filename, pnginfo=pnginfo)
 
 
 if __name__ == "__main__":
@@ -69,6 +89,10 @@ if __name__ == "__main__":
     # inpainting
     parser.add_argument("--mask", type=str, default=None, help="mask of the region to inpaint on the initial image")
     # output name
-    parser.add_argument("--output", type=str, default="output.png", help="output image name")
+    parser.add_argument("--output", type=str, default=None, help="output image name")
+    # count
+    parser.add_argument("--count", type=int, default=1, help="number of images to generate")
     args = parser.parse_args()
-    main(args)
+    for i in range(args.count):
+        main(args)
+        args.seed += 1
