@@ -48,7 +48,8 @@ def main(args):
         strength = args.strength,
         num_inference_steps = args.num_inference_steps,
         guidance_scale = args.guidance_scale,
-        eta = args.eta
+        eta = args.eta,
+        unprompt = args.unprompt
     )
     if args.output:
         filename = args.output
@@ -58,7 +59,8 @@ def main(args):
             current += 1
         filename = f"{current:05d}-{args.seed}-{sanitize_filename_part(args.prompt)[:128]}.png"
     #cv2.imwrite(filename, image)
-    info = f"{args.prompt}\nSteps: {args.num_inference_steps}, CFG scale: {args.guidance_scale}, Seed: {args.seed}, OpenVINO"
+    negative_prompt_text = "\nNegative prompt: " + args.unprompt if args.unprompt else ""
+    info = f"{args.prompt}{negative_prompt_text}\nSteps: {args.num_inference_steps}, CFG scale: {args.guidance_scale}, Seed: {args.seed}, OpenVINO"
     pnginfo = PngImagePlugin.PngInfo()
     pnginfo.add_text("parameters", info)
     image = Image.fromarray(image)
@@ -90,6 +92,8 @@ if __name__ == "__main__":
     parser.add_argument("--mask", type=str, default=None, help="mask of the region to inpaint on the initial image")
     # output name
     parser.add_argument("--output", type=str, default=None, help="output image name")
+    # unprompt added by rpyth
+    parser.add_argument("--unprompt", type=str, default="", help="negative prompt")
     # count
     parser.add_argument("--count", type=int, default=1, help="number of images to generate")
     args = parser.parse_args()
